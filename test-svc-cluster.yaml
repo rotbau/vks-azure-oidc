@@ -1,0 +1,99 @@
+# Example Service Account Secrets for Cluster
+#
+# DISCLAIMER: This script is provided "as is" without warranty.
+# Use at your own risk. Not supported.
+#
+# These secrets MUST be created BEFORE the Cluster object.
+# CAPI will use these pre-created secrets instead of generating new keys.
+#.
+# Generate RSA key pair:
+#   openssl genrsa -out sa.key 4096
+#   openssl rsa -in sa.key -pubout -out sa.pub
+#
+# Create the secret in the vSphere namespace of the cluster.  This will be picked up on the cluster and created as a service account
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-svc-cluster-sa     # Format <clustername>-sa
+  namespace: test-ns            # vSphere Namespace where VKS cluster will be created
+type: cluster.x-k8s.io/secret
+stringData:
+  tls.crt: |
+    -----BEGIN PUBLIC KEY-----
+    MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA3k90B+q46FD62rzZCqsy
+    ..............
+    -----END PUBLIC KEY-----
+  tls.key: |
+    -----BEGIN PRIVATE KEY-----
+    MIIJRAIBADANBgkqhkiG9w0BAQEFAASCCS4wggkqAgEAAoICAQDeT3QH6rjoUPra
+    ...............
+    -----END PRIVATE KEY-----
+---
+# Example Cluster Manifest for Supervisor Cluster
+#
+# This file creates a workload cluster in the VKS supervisor cluster.
+# Apply this to the SUPERVISOR cluster, not the workload cluster.
+#
+# Prerequisites:
+# 1. Secret above correct Key pair updated
+# 2. Custom ClusterClass applied to supervisor (svc-account-issuer-custom-class-3.4.0.yaml)
+# 3. Create OIDC provider and Blob Storage
+#    - Upload /.well-known/openid-configuration
+#    - Upload /keys.json (JWKS) (using the public key above)
+#    - Ensure  bucket is publicly readable
+# 4. Register the OIDC provider in IAM:
+# 5. Configure IAM roles with appropriate trust policies
+#
+# Usage:
+#    # First, edit the secrets above with your actual keys
+#    kubectl apply -f test-svc-cluster.yaml
+#
+#
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: test-svc-cluster                  # VKS Cluster Name
+  namespace: test-ns                      # vSphere namespace where cluster will be created
+  annotations:
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 192.168.0.0/16
+    services:
+      cidrBlocks:
+        - 198.51.100.0/12
+    serviceDomain: cluster.local
+  topology:
+    # Name of Custom Cluster Class
+    class: svc-account-issuer-custom-class-3.4.0
+    # Namesapce of Custom Cluster Class
+    classNamespace: test-ns
+    version: v1.33.3---vmware.1-fips-vkr.1
+    variables:
+    # Service account issuer
+    # We will use the default here so we can patch after OIDC documents created
+      - name: serviceAccountIssuer
+        value: "https://kubernetes.default.svc.cluster.local"
+      - name: vmClass
+        value: best-effort-medium
+      - name: storageClass
+        value: vsan-default-storage-policy
+      - name: vsphereOptions
+        value:
+          persistentVolumes:
+            defaultStorageClass: vsan-default-storage-policy
+    controlPlane:
+      replicas: 1
+      metadata:
+        annotations:
+          run.tanzu.vmware.com/resolve-os-image: "os-name=ubuntu,os-version=22.04"
+    workers:
+      machineDeployments:
+        - class: node-pool
+          name: np01
+          replicas: 2
+          metadata:
+            annotations:
+              run.tanzu.vmware.com/resolve-os-image: "os-name=ubuntu,os-version=22.04"
+

@@ -1,0 +1,4 @@
+- op: replace
+  path: /spec/topology/variables/0/value                             # Update the index for correct value
+  value: "https://login.microsoftonline.com/tenant123/v2.0"          # update with OIDC endpoint (no terminal /)
+
