@@ -34,6 +34,14 @@ Then Patch
 
 Check the update applied
 ```
-kubectl get kcp <kcp-name> -n test-ns -oyaml |grep -i service-account-issuer -A 2
+kubectl get kcp test-svc-cluster-7vtmt -n test-ns -o json | jq -r '
+  .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs[] 
+  | select(.name == "service-account-issuer") 
+  | .value'
+```
+
+Check Well-Known ID for Cluster
+```
+ kubectl get --raw /.well-known/openid-configuration |jq
 ```
 
