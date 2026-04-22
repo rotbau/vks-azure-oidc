@@ -32,7 +32,9 @@ Then Patch
  --patch-file patch-issuer.yaml
  ```
 
-Check the update applied
+## Verification
+
+- Check the update applied
 ```
 kubectl get kcp test-svc-cluster-7vtmt -n test-ns -o json | jq -r '
   .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs[] 
@@ -40,7 +42,7 @@ kubectl get kcp test-svc-cluster-7vtmt -n test-ns -o json | jq -r '
   | .value'
 ```
 
-Check Well-Known ID for Cluster
+- Check Well-Known ID for Cluster
 ```
  kubectl get --raw /.well-known/openid-configuration |jq
 ```
