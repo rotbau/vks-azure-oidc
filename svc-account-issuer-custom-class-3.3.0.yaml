@@ -12,47 +12,37 @@
 # the VKS cluster manifest instead of the default Kubernetes API server URL.
 # This allows IAM to validate tokens via OIDC provider registration.  The default
 # serviceAccountIssuer defined in this clusterclass is just a placeholder to avoid errors.
-apiVersion: cluster.x-k8s.io/v1beta2
+apiVersion: cluster.x-k8s.io/v1beta1
 kind: ClusterClass
 metadata:
   name: svc-account-issuer-custom-class-v3.3.0
   namespace: test-ns
 spec:
   controlPlane:
-    healthCheck:
-      remediation:
-        triggerIf:
-          unhealthyLessThanOrEqualTo: 100%
-      checks:
-        nodeStartupTimeoutSeconds: 7200
-        unhealthyNodeConditions:
-        - status: Unknown
-          timeoutSeconds: 300
-          type: Ready
-        - status: "False"
-          timeoutSeconds: 720
-          type: Ready
     machineInfrastructure:
-      templateRef:
+      ref:
         apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
         kind: VSphereMachineTemplate
         name: tkc-control-plane-v3.3.0
+        namespace: vmware-system-vks-public
     metadata:
       annotations:
         run.tanzu.vmware.com/resolve-os-image: os-name=photon
-    templateRef:
+    ref:
       apiVersion: controlplane.cluster.x-k8s.io/v1beta1
       kind: KubeadmControlPlaneTemplate
       name: tkc-control-plane-v3.3.0
+      namespace: vmware-system-vks-public
   infrastructure:
-    templateRef:
+    ref:
       apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
       kind: VSphereClusterTemplate
       name: tkc-infrastructure-v3.3.0
+      namespace: vmware-system-vks-public
   patches:
-  # Patch API Server service-account-issuer
+    # Patch API Server service-account-issuer
   - name: service-account-issuer
-    description: Configure custom OIDC issuer
+    description: Configure custom OIDC issuer for AWS pod identity
     definitions:
     - selector:
         apiVersion: controlplane.cluster.x-k8s.io/v1beta1
@@ -67,7 +57,7 @@ spec:
   - name: default
     external:
       discoverVariablesExtension: discover-variables.runtime-extension
-      generatePatchesExtension: generate-patches.runtime-extension
+      generateExtension: generate-patches.runtime-extension
       settings:
         version: v3.3.0
   variables:
@@ -78,20 +68,23 @@ spec:
       openAPIV3Schema:
         type: string
         default: "kubernetes.default.svc.cluster.local"
-        description: "OIDC issuer URL for service account tokens"
+        description: "OIDC issuer URL for service account tokens placeholder"
   workers:
     machineDeployments:
     - class: node-pool
-      bootstrap:
-        templateRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
-          kind: KubeadmConfigTemplate
-          name: tkc-md-v3.3.0
-      infrastructure:
-        templateRef:
-          apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
-          kind: VSphereMachineTemplate
-          name: tkc-md-v3.3.0
-      metadata:
-        annotations:
-          run.tanzu.vmware.com/resolve-os-image: os-name=photon
+      template:
+        bootstrap:
+          ref:
+            apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+            kind: KubeadmConfigTemplate
+            name: tkc-md-v3.3.0
+            namespace: vmware-system-vks-public
+        infrastructure:
+          ref:
+            apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
+            kind: VSphereMachineTemplate
+            name: tkc-md-v3.3.0
+            namespace: vmware-system-vks-public
+        metadata:
+          annotations:
+            run.tanzu.vmware.com/resolve-os-image: os-name=photon
