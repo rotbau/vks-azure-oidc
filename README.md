@@ -15,7 +15,9 @@ Disclaimer: Use at your own risk. This project is provided "as is" without any w
 - test-svc-cluster-3.3.0.yaml - VKS cluster manifest with cluster secret that leverage the custom cluster class
 - patch-issuer.yaml - json patch file that will update the service-account-issuer value
 
-## Proccedure
+## Proccedure 
+**Note:** All kubectl commands are run from the Supervisor context
+
 1. Modify .metaname.namepace in svc-account-issuer-custom-class-3.3.0.yaml with your vSphee namespace
 2. Create the custom cluster class
 ```
@@ -115,7 +117,7 @@ kubectl get kcp test-svc-cluster-330-xxxxx -n test-ns -o json | jq -r '
 # Output Should Show Value from Patch
 ```
 
-3. Check Well-Known ID for Cluster
+3. Check Well-Known ID for Cluster (from VKS cluster context)
 ```
  kubectl get --raw /.well-known/openid-configuration |jq
 ```
