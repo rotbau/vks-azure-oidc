@@ -14,7 +14,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: test-svc-cluster-sa     # Format <clustername>-sa
+  name: test-svc-cluster-330-sa     # Format <clustername>-sa
   namespace: test-ns            # vSphere Namespace where VKS cluster will be created
 type: cluster.x-k8s.io/secret
 stringData:
