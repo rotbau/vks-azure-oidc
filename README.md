@@ -59,7 +59,7 @@ kubectl get md -n <vsphere-namespace>
 ```
 kubectl get kcp -n <vpsphere-namespace>
 
-kubectl get kcp test-svc-cluster-xxxx -n <vsphere-namespace> -o json | jq -r '
+kubectl get kcp test-svc-cluster-330-xxxxx -n <vsphere-namespace> -o json | jq -r '
   .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs[] 
   | select(.name == "service-account-issuer") 
   | .value'
@@ -76,7 +76,7 @@ A merge type patch fails because the cluster validating webhook expects all valu
 
 1. Determine Index Location
 ```
-kubectl get cluster test-svc-cluster -n <vsphere-namespace> -o jsonpath='{range .spec.topology.variables[*]}{.name}{"\n"}{end}' | grep -n "serviceAccountIssuer"
+kubectl get cluster test-svc-cluster-330 -n <vsphere-namespace> -o jsonpath='{range .spec.topology.variables[*]}{.name}{"\n"}{end}' | grep -n "serviceAccountIssuer"
 1:serviceAccountIssuer
 ```
 We need to correct the index number (x-1) becaue Grep starts at 1 and Kubernetes starts at 0.  So index 1 becomes 0
@@ -90,7 +90,7 @@ We need to correct the index number (x-1) becaue Grep starts at 1 and Kubernetes
 
 3. Patch Cluster
 ```
- k patch cluster test-svc-cluster-33 \
+ k patch cluster test-svc-cluster-330 \
  -n <vsphere-namespace> \
  --type json \
  --patch-file patch-issuer.yaml
@@ -107,7 +107,7 @@ kubectl get kcp -n <vsphere-namesapce>
 
 2. Veriy Service-Account-Issuer is Updated
 ```
-kubectl get kcp test-svc-cluster-7vtmt -n test-ns -o json | jq -r '
+kubectl get kcp test-svc-cluster-330-xxxxx -n test-ns -o json | jq -r '
   .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs[] 
   | select(.name == "service-account-issuer") 
   | .value'
