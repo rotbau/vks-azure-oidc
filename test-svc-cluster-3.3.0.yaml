@@ -49,40 +49,47 @@ stringData:
 #    kubectl apply -f test-svc-cluster.yaml
 #
 #
+# Example Cluster Manifest for Supervisor Cluster
+#
+# This file creates a workload cluster in the VKS supervisor cluster.
+# Apply this to the SUPERVISOR cluster, not the workload cluster.
+#
+# Prerequisites:
+# 1. Create service account secrets FIRST (see above)
+# 2. Apply the custom ClusterClass to supervisor (custom-clusterclass-aws-pod-identity.yaml)
+# 3. Create S3 bucket and upload OIDC discovery files:
+#    - Upload /.well-known/openid-configuration to S3
+#    - Upload /keys.json (JWKS) to S3 (using the public key above)
+#    - Ensure S3 bucket is publicly readable
+# 4. Register the OIDC provider in AWS IAM:
+#.   - Value from OIDC Provider: https://example-vks-oidc.s3.us-west-2.amazonaws.com/t2-aws-pod-identity
+#    - S3 structure: region/zone/namespace/cluster-name
+#    - Fetch JWKS from S3 bucket to register thumbprint
+# 5. Configure IAM roles with appropriate trust policies
+#
+# Usage:
+#    # First, edit the secrets above with your actual keys
+#    kubectl apply -f example-cluster.yaml
+#
+# After cluster is ready, see example-workload.yaml for pod configurations
+# that run IN the workload cluster.
+#
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
-  name: test-svc-cluster                  # VKS Cluster Name
-  namespace: test-ns                      # vSphere namespace where cluster will be created
-  annotations:
+  name: test-svc-cluster-330
+  namespace: test-ns
 spec:
   clusterNetwork:
-    pods:
-      cidrBlocks:
-        - 192.168.0.0/16
     services:
-      cidrBlocks:
-        - 198.51.100.0/12
-    serviceDomain: cluster.local
+      cidrBlocks: ["198.51.100.0/12"]
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+    serviceDomain: "cluster.local"
   topology:
-    # Name of Custom Cluster Class
-    class: svc-account-issuer-custom-class-3.4.0
-    # Namesapce of Custom Cluster Class
-    classNamespace: test-ns
-    version: v1.33.3---vmware.1-fips-vkr.1
-    variables:
-    # Service account issuer
-    # We will use the default here so we can patch after OIDC documents created
-      - name: serviceAccountIssuer
-        value: "https://kubernetes.default.svc.cluster.local"
-      - name: vmClass
-        value: best-effort-medium
-      - name: storageClass
-        value: vsan-default-storage-policy
-      - name: vsphereOptions
-        value:
-          persistentVolumes:
-            defaultStorageClass: vsan-default-storage-policy
+    # Matches the name we used in the v3.3.0 ClusterClass
+    class: svc-account-issuer-custom-class-v3.3.0
+    version: v1.32.7---vmware.3-fips-vkr.1
     controlPlane:
       replicas: 1
       metadata:
@@ -96,4 +103,17 @@ spec:
           metadata:
             annotations:
               run.tanzu.vmware.com/resolve-os-image: "os-name=ubuntu,os-version=22.04"
+    variables:
+    # Default Value can be updated at cluster build or patched
+      - name: serviceAccountIssuer
+        value: "https://kubernetes.default.svc.cluster.local"
+      - name: vmClass
+        value: best-effort-medium
+      - name: storageClass
+        value: vsan-default-storage-policy
+      - name: vsphereOptions
+        value:
+          persistentVolumes:
+            defaultStorageClass: vsan-default-storage-policy
+
 
