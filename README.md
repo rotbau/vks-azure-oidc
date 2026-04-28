@@ -2,11 +2,12 @@
 
 These files can be used to add a custom OIDC endpoint for service account authorization and role assumption on VKS clusters
 
-Disclaimer: Use at your own risk. This project is provided "as is" without any warranty of any kind, either expressed or implied. The author assumes no liability for any damages or data loss caused by the use of this configuration. This is not an official product and is not supported by any organizatio
+Disclaimer: Use at your own risk. This project is provided "as is" without any warranty of any kind, either expressed or implied. The author assumes no liability for any damages or data loss caused by the use of this configuration. This is not an official product and is not supported by any organization
+
 
 ## Prerequistes
 - Supervisor 1.28 or later
-- VKS version 3.3.0 or later (Tanzu Kubernetes Grid Service)
+- VKS version 3.3.0 or later (Tanzu Kubernetes Grid Service) - note very specific to VKS version 3.3.0, some commands may fail in newer versions.
 - vSphere Namespace access with at least edit permissions
 - Jumpbox with jq and kubectl, kubectl-vsphere plugin installed
 
