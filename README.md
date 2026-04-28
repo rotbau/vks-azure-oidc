@@ -38,12 +38,12 @@ kubectl apply -f svc-account-issuer-custom-class-3.3.0.yaml
 - storageClass: must match an avaiable storageclass for your vsphere namespace (vsan-default-storage-policy in our example).  Use command below to determine.
 - defaultStorageClass: set to same value as storageClass
 ```
-<-- vmClass spec.topology.variables[name="vmClass"].value -->
+<!-- vmClass spec.topology.variables[name="vmClass"].value -->
 
 kubectl get vmclass -n test-ns
 ```
 ```
-<-- storageClass spec.topology.variables[name="storageClass"].value -->
+<!-- storageClass spec.topology.variables[name="storageClass"].value -->
 
 kubectl describe ns test-ns
 ```
