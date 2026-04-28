@@ -15,7 +15,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: test-svc-cluster-330-sa     # Format <clustername>-sa
-  namespace: test-ns            # vSphere Namespace where VKS cluster will be created
+  namespace: test-ns                # vSphere Namespace where VKS cluster will be created
 type: cluster.x-k8s.io/secret
 stringData:
   tls.crt: |
@@ -35,50 +35,21 @@ stringData:
 # Apply this to the SUPERVISOR cluster, not the workload cluster.
 #
 # Prerequisites:
-# 1. Secret above correct Key pair updated
-# 2. Custom ClusterClass applied to supervisor (svc-account-issuer-custom-class-3.4.0.yaml)
-# 3. Create OIDC provider and Blob Storage
-#    - Upload /.well-known/openid-configuration
-#    - Upload /keys.json (JWKS) (using the public key above)
-#    - Ensure  bucket is publicly readable
-# 4. Register the OIDC provider in IAM:
-# 5. Configure IAM roles with appropriate trust policies
+# 1. Secret above correct Key pair updated and created in the correct namespace and name <clustername>-sa
+# 2. Custom ClusterClass applied to supervisor (svc-account-issuer-custom-class-3.3.0.yaml)
+# 3. Update .metadata.namespace to your vSphere namespace
+# 4. Update storageclass to match your available storageclass
 #
 # Usage:
 #    # First, edit the secrets above with your actual keys
 #    kubectl apply -f test-svc-cluster.yaml
-#
-#
-# Example Cluster Manifest for Supervisor Cluster
-#
-# This file creates a workload cluster in the VKS supervisor cluster.
-# Apply this to the SUPERVISOR cluster, not the workload cluster.
-#
-# Prerequisites:
-# 1. Create service account secrets FIRST (see above)
-# 2. Apply the custom ClusterClass to supervisor (custom-clusterclass-aws-pod-identity.yaml)
-# 3. Create S3 bucket and upload OIDC discovery files:
-#    - Upload /.well-known/openid-configuration to S3
-#    - Upload /keys.json (JWKS) to S3 (using the public key above)
-#    - Ensure S3 bucket is publicly readable
-# 4. Register the OIDC provider in AWS IAM:
-#.   - Value from OIDC Provider: https://example-vks-oidc.s3.us-west-2.amazonaws.com/t2-aws-pod-identity
-#    - S3 structure: region/zone/namespace/cluster-name
-#    - Fetch JWKS from S3 bucket to register thumbprint
-# 5. Configure IAM roles with appropriate trust policies
-#
-# Usage:
-#    # First, edit the secrets above with your actual keys
-#    kubectl apply -f example-cluster.yaml
-#
-# After cluster is ready, see example-workload.yaml for pod configurations
-# that run IN the workload cluster.
+
 #
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   name: test-svc-cluster-330
-  namespace: test-ns
+  namespace: test-ns               # update to match your vsphere namespace
 spec:
   clusterNetwork:
     services:
@@ -87,14 +58,14 @@ spec:
       cidrBlocks: ["192.168.0.0/16"]
     serviceDomain: "cluster.local"
   topology:
-    # Matches the name we used in the v3.3.0 ClusterClass
+    # Set to your custom cluster class name
     class: svc-account-issuer-custom-class-v3.3.0
     version: v1.32.7---vmware.3-fips-vkr.1
     controlPlane:
       replicas: 1
       metadata:
         annotations:
-          run.tanzu.vmware.com/resolve-os-image: "os-name=ubuntu,os-version=22.04"
+          run.tanzu.vmware.com/resolve-os-image: os-name=ubuntu
     workers:
       machineDeployments:
         - class: node-pool
@@ -102,18 +73,17 @@ spec:
           replicas: 2
           metadata:
             annotations:
-              run.tanzu.vmware.com/resolve-os-image: "os-name=ubuntu,os-version=22.04"
+              run.tanzu.vmware.com/resolve-os-image: os-name=ubuntu
     variables:
     # Default Value can be updated at cluster build or patched
       - name: serviceAccountIssuer
         value: "https://kubernetes.default.svc.cluster.local"
       - name: vmClass
-        value: best-effort-medium
+        value: best-effort-medium                                # verify vsphere namespace contains this vmclass
       - name: storageClass
-        value: vsan-default-storage-policy
+        value: vsan-default-storage-policy                       # update to match available storageclass
       - name: vsphereOptions
         value:
           persistentVolumes:
-            defaultStorageClass: vsan-default-storage-policy
-
+            defaultStorageClass: vsan-default-storage-policy     # update to match available storageclass
 

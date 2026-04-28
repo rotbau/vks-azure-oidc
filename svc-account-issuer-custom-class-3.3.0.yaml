@@ -17,30 +17,42 @@ kind: ClusterClass
 metadata:
   name: svc-account-issuer-custom-class-v3.3.0
   namespace: test-ns
+  annotations:
+    run.tanzu.vmware.com/resolve-tkr: ""
+  labels:
+    kubernetes.vmware.com/type: generic
+    kubernetes.vmware.com/version: v3.3.0
 spec:
   controlPlane:
+    machineHealthCheck:
+      maxUnhealthy: 100%
+      nodeStartupTimeout: 2h0m0s
+      unhealthyConditions:
+      - status: Unknown
+        timeout: 5m0s
+        type: Ready
+      - status: "False"
+        timeout: 12m0s
+        type: Ready
     machineInfrastructure:
       ref:
         apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
         kind: VSphereMachineTemplate
         name: tkc-control-plane-v3.3.0
-        namespace: vmware-system-vks-public
     metadata:
       annotations:
-        run.tanzu.vmware.com/resolve-os-image: os-name=photon
+        run.tanzu.vmware.com/resolve-os-image: "os-name=photon"
     ref:
       apiVersion: controlplane.cluster.x-k8s.io/v1beta1
       kind: KubeadmControlPlaneTemplate
       name: tkc-control-plane-v3.3.0
-      namespace: vmware-system-vks-public
   infrastructure:
     ref:
       apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
       kind: VSphereClusterTemplate
       name: tkc-infrastructure-v3.3.0
-      namespace: vmware-system-vks-public
   patches:
-    # Patch API Server service-account-issuer
+  # Custom service-account-issuer pacthc
   - name: service-account-issuer
     description: Configure custom OIDC issuer for AWS pod identity
     definitions:
@@ -61,30 +73,30 @@ spec:
       settings:
         version: v3.3.0
   variables:
-  # Default Placeholder value for service-account-issuer
+  # Place Holder Variable for service-account-issuer
   - name: serviceAccountIssuer
     required: true
     schema:
       openAPIV3Schema:
         type: string
-        default: "kubernetes.default.svc.cluster.local"
-        description: "OIDC issuer URL for service account tokens placeholder"
+        default: "https://kubernetes.default.svc.cluster.local"
   workers:
     machineDeployments:
     - class: node-pool
+      machineHealthCheck:
+        maxUnhealthy: 100%
+        nodeStartupTimeout: 2h0m0s
       template:
         bootstrap:
           ref:
             apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
             kind: KubeadmConfigTemplate
             name: tkc-md-v3.3.0
-            namespace: vmware-system-vks-public
         infrastructure:
           ref:
             apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
             kind: VSphereMachineTemplate
             name: tkc-md-v3.3.0
-            namespace: vmware-system-vks-public
         metadata:
           annotations:
-            run.tanzu.vmware.com/resolve-os-image: os-name=photon
+            run.tanzu.vmware.com/resolve-os-image: "os-name=photon"
