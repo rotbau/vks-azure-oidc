@@ -116,11 +116,14 @@ If you have a more complex VKS manifest the merge patch can become quite complex
 1. Determine Index Location
 ```
 kubectl get cluster test-svc-cluster-330 -n test-ns -o jsonpath='{range .spec.topology.variables[*]}{.name}{"\n"}{end}' | grep -n "serviceAccountIssuer"
+```
+This will return something like the following:
+```
 1:serviceAccountIssuer
 ```
 We need to correct the index number (x-1) becaue Grep starts at 1 and Kubernetes starts at 0.  So index 1 becomes 0
 
-2. Create a Patch File (or update example patch in this repository)
+2. Create a Patch File (or update patch-issuer.yaml in this repository)
 ```
 - op: replace
   path: /spec/topology/variables/0/value                             # Update the index for correct value
@@ -146,9 +149,9 @@ kubectl get kcp -n test-ns
 2. Veriy Service-Account-Issuer is Updated
 ```
 kubectl get kcp test-svc-cluster-330-xxxxx -n test-ns -o json | jq -r '.spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs["service-account-issuer"]'
-
-# Output Should Show Value from Patch
 ```
+Output Should Show Value from Patch
+
 3. Check Well-Known ID for Cluster (from VKS cluster context)
 ```
  kubectl get --raw /.well-known/openid-configuration |jq
