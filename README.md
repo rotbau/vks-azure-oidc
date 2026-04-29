@@ -37,18 +37,19 @@ kubectl apply -f svc-account-issuer-custom-class-3.3.0.yaml
 - vmClass: must match an available vmclass assigned to your vsphere namespace (best-effort-medium in our example).  Use command below to determine
 - storageClass: must match an avaiable storageclass for your vsphere namespace (vsan-default-storage-policy in our example).  Use command below to determine.
 - defaultStorageClass: set to same value as storageClass
-```
-<!-- vmClass spec.topology.variables[name="vmClass"].value -->
 
+vmClass spec.topology.variables[name="vmClass"].value
+```
 kubectl get vmclass -n test-ns
 ```
-```
-<!-- storageClass spec.topology.variables[name="storageClass"].value -->
 
+storageClass spec.topology.variables[name="storageClass"].value
+```
 kubectl describe ns test-ns
 ```
-```
+
 Example Output: storage class is vsan-default-storage-policy
+```
   Name:                                                                     test-ns-storagequota
   Resource                                                                  Used  Hard
   --------                                                                  ---   ---
@@ -65,12 +66,12 @@ kubectl get cluster,kcp,md,ma,vspheremachine -n test-ns
 6. Check Default Service Account Issuer Value
 ```
 kubectl get kcp -n test-ns
-
-kubectl get kcp test-svc-cluster-330-xxxxx -n test-ns -o json | jq -r '.spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs["service-account-issuer"]'
-
-# Output should display
-https://kubernetes.default.svc.cluster.local
 ```
+```
+kubectl get kcp test-svc-cluster-330-xxxxx -n test-ns -o json | jq -r '.spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs["service-account-issuer"]'
+```
+Output should display
+https://kubernetes.default.svc.cluster.local
 
 
 ## Patching
