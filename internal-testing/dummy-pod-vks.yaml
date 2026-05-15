@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    azure.workload.identity/client-id: dummy
+  name: workload-identity-sa
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dummy-pod
+  labels:
+    azure.workload.identity/use: "true"
+spec:
+  serviceAccountName: workload-identity-sa
+  containers:
+    - name: busybox
+      image: busybox
+      command:
+        - sleep
+        - "3600"
