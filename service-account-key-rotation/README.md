@@ -26,6 +26,10 @@ Make the following adjustments to the steps lised in the official Azure AD Workl
 ```
 - An example jump-daemonset-vks.yaml manifest is provided in this repository for reference
 
+**Step 4 - Key Rotation**
+- When you update the  `/etc/kubernetes/manifests/kube-apiserver.yaml` manifest it will trigger a restart of the kube-apiserver pod.  This may disconnect you from the cluster node(s) temporarily.  Just reconnect when the kube-apiserver is back running and make sure the files are updated on all nodes.
+- I noted in testing that the `vsphere-csi` pods in the `vmware-system-csi` namespace went into `CrashLoopBackOff` after the API server restarted.  The pods all recovered after a few minutes.  In any pods are stuck in CLBO you can manually delete them 1 at a time and they should come back to running state.
+
 ## Post Update VKS - Update cluster secret
 The intial SA secret was created as part of the cluster creation manifest and uses a specific naming convention `{clustername}-sa`.  In our example this secret was called `test-svc-cluster-330-sa`.  VKS cluster operators look for a secret with name to allow for overriding the SA keypair.  VKS clusters use rolling upgrades to handle cluster LCM operations.  In the case where a VKS cluster CP nodes need to be replaced, this `{clustername}-sa` secret will again be referenced to create the `sa.key` and `sa.pub` files on the control plane nodes.  We need to make sure it is updated after the key rotation process is complete.  Note: updating this secret will not cause the control-plane nodes execute a rolling update.
 
