@@ -26,7 +26,7 @@ ssh vmware-system-user@<WORKER_NODE_IP>
 # Change to Root
 sudo -i
 ```
-4. Verified on the resulting control-plane node — only the kubeadm default issuer is defined, no duplicate:
+4. Verify on the resulting control-plane node — only the kubeadm default issuer is defined, no duplicate:
 ```
 grep service-account /etc/kubernetes/manifests/kube-apiserver.yaml
 

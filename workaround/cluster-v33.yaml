@@ -29,7 +29,7 @@ spec:
               run.tanzu.vmware.com/resolve-os-image: os-name=photon
     variables:
       - name: vmClass
-        value: best-effort-small
+        value: best-effort-medium
       - name: storageClass
         value: vsan-default-storage-policy
       - name: vsphereOptions
