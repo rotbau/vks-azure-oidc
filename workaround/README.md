@@ -5,8 +5,10 @@ This workaround defines the variables in the cluster class but doesn't set a val
 ## Recommended Approach: variable-driven optional patch
 1. Create a custom ClusterClass with an inline variable for the external issuer URL (externalServiceAccountIssuerURL, optional), the default patch, and one always-on patch that appends the kubeadm default --service-account-issuer via kubeadm's native patches directory (/run/kubeadm/patches) — but only when the variable is set (enabledIf), to avoid duplicating kubeadm's own implicit default.  [Example Cluster-Class](custom-cluster-class-3.3.yaml)
 2. Create the Cluster without setting externalServiceAccountIssuerURL — both optional patches stay disabled, and the cluster comes up with just kubeadm's own implicit default issuer. [Example Cluster](cluster-v33.yaml)
-3. SSH to control-plane Node of new cluster when cluster build in completed
+3. SSH to control-plane Node of new cluster when cluster build in completed 
 ```
+# These commands need to be run from the Supervisor context
+
 # Get VMs in vSphere Namespace and record IP of control-plane Node.
 kubectl get virtualmachines -n <VSPHERE_NAMESPACE> -o wide
 
