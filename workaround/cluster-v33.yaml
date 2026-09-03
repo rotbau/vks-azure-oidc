@@ -1,0 +1,41 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: cluster-v33
+  namespace: test-ns
+spec:
+  clusterNetwork:
+    services:
+      cidrBlocks:
+        - 198.202.0.0/16
+    pods:
+      cidrBlocks:
+        - 193.1.0.0/16
+  topology:
+    class: custom-cc-service-account-v33
+    version: v1.32.7---vmware.3-fips-vkr.1
+    controlPlane:
+      replicas: 1
+      metadata:
+        annotations:
+          run.tanzu.vmware.com/resolve-os-image: os-name=photon
+    workers:
+      machineDeployments:
+        - class: node-pool
+          name: worker
+          replicas: 1
+          metadata:
+            annotations:
+              run.tanzu.vmware.com/resolve-os-image: os-name=photon
+    variables:
+      - name: vmClass
+        value: best-effort-small
+      - name: storageClass
+        value: vsan-default-storage-policy
+      - name: vsphereOptions
+        value:
+          persistentVolumes:
+            defaultStorageClass: vsan-default-storage-policy
+            availableStorageClasses:
+              - vsan-default-storage-policy
+      # externalServiceAccountIssuerURL intentionally omitted

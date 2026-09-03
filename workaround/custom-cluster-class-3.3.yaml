@@ -1,0 +1,123 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: ClusterClass
+metadata:
+  name: custom-cc-service-account-v33
+  namespace: test-ns
+  annotations:
+    run.tanzu.vmware.com/resolve-tkr: ""
+  labels:
+    kubernetes.vmware.com/type: generic
+    kubernetes.vmware.com/version: v3.3.0
+spec:
+  controlPlane:
+    machineHealthCheck:
+      maxUnhealthy: 100%
+      nodeStartupTimeout: 2h0m0s
+      unhealthyConditions:
+      - status: Unknown
+        timeout: 5m0s
+        type: Ready
+      - status: "False"
+        timeout: 12m0s
+        type: Ready
+    machineInfrastructure:
+      ref:
+        apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
+        kind: VSphereMachineTemplate
+        name: tkc-control-plane-v3.3.0
+    metadata:
+      annotations:
+        run.tanzu.vmware.com/resolve-os-image: "os-name=photon"
+    ref:
+      apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+      kind: KubeadmControlPlaneTemplate
+      name: tkc-control-plane-v3.3.0
+  infrastructure:
+    ref:
+      apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
+      kind: VSphereClusterTemplate
+      name: tkc-infrastructure-v3.3.0
+  variables:
+  - name: externalServiceAccountIssuerURL
+    required: false
+    schema:
+      openAPIV3Schema:
+        type: string
+  patches:
+  - name: default
+    external:
+      discoverVariablesExtension: discover-variables.runtime-extension
+      generateExtension: generate-patches.runtime-extension
+      settings:
+        version: v3.3.0
+
+  # Only active when externalServiceAccountIssuerURL is set
+  - name: kubeadm-native-issuer-patch
+    enabledIf: "{{ if .externalServiceAccountIssuerURL }}true{{end}}"
+    description: >-
+      Uses kubeadm native patches directory (durable across re-renders) to
+      always append the kubeadm default --service-account-issuer as a
+      second, accepted-only entry. Also wires initConfiguration/joinConfiguration
+      .patches.directory since this CC version does not set it by default.
+    definitions:
+    - selector:
+        apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+        kind: KubeadmControlPlaneTemplate
+        matchResources:
+          controlPlane: true
+      jsonPatches:
+      - op: add
+        path: /spec/template/spec/kubeadmConfigSpec/files/-
+        value:
+          path: /run/kubeadm/patches/kube-apiserver0+json.json
+          owner: "root:root"
+          permissions: "0644"
+          content: >-
+            [{"op":"add","path":"/spec/containers/0/command/-","value":"--service-account-issuer=https://kubernetes.default.svc.cluster.local"}]
+      - op: add
+        path: /spec/template/spec/kubeadmConfigSpec/initConfiguration/patches
+        value:
+          directory: /run/kubeadm/patches
+      - op: add
+        path: /spec/template/spec/kubeadmConfigSpec/joinConfiguration/patches
+        value:
+          directory: /run/kubeadm/patches
+
+  - name: raw-external-service-account-issuer
+    enabledIf: "{{ if .externalServiceAccountIssuerURL }}true{{end}}"
+    description: >-
+      Sets the external issuer as the primary/signing service-account-issuer.
+      Value comes from the externalServiceAccountIssuerURL Cluster variable via
+      valueFrom.template.
+    definitions:
+    - selector:
+        apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+        kind: KubeadmControlPlaneTemplate
+        matchResources:
+          controlPlane: true
+      jsonPatches:
+      - op: add
+        path: /spec/template/spec/kubeadmConfigSpec/clusterConfiguration/apiServer/extraArgs/service-account-issuer
+        valueFrom:
+          template: '{{ .externalServiceAccountIssuerURL }}'
+
+  workers:
+    machineDeployments:
+    - class: node-pool
+      machineHealthCheck:
+        maxUnhealthy: 100%
+        nodeStartupTimeout: 2h0m0s
+      template:
+        bootstrap:
+          ref:
+            apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+            kind: KubeadmConfigTemplate
+            name: tkc-md-v3.3.0
+        infrastructure:
+          ref:
+            apiVersion: vmware.infrastructure.cluster.x-k8s.io/v1beta1
+            kind: VSphereMachineTemplate
+            name: tkc-md-v3.3.0
+        metadata:
+          annotations:
+            run.tanzu.vmware.com/resolve-os-image: "os-name=photon"
