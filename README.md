@@ -36,7 +36,6 @@ By leveraging a variable-driven optional patch, new tokens are signed by the new
 │   └── cluster-v37.yaml
 ├── patches/
 │   ├── patch-issuer.yaml
-│   └── patch-issuer-3.7.yaml
 ├── secret-rotation/
 │   ├── patch-node-label.yaml
 │   └── service-account-secret-rotation.yaml
