@@ -1,40 +1,8 @@
-Here are the key structural, flow, and formatting improvements for your README, followed by a fully refactored markdown template you can copy and use directly.
-
----
-
-### Key Recommendations
-
-#### 1. Structure & Flow
-
-* **Relocate the Disclaimer:** Move the disclaimer block to the bottom of the document (`## Disclaimer`). Placing heavy legal disclaimers immediately under the title disrupts the reader's momentum before they understand the project.
-* **Unify the Operational Steps:** `Install Azure ARC software` and `Patch Cluster` are currently top-level headers (`##`), which breaks the deployment workflow. Combine all operational steps into a single section (`## Deployment & Configuration`) using sequential steps (`Step 1` through `Step 5`).
-* **Fix Step Numbering:** The "Patch Cluster" section currently skips steps (jumping directly from `1.` to `6.`).
-* **Elevate Prerequisites:** Pull "Prerequisites" out of "Process Overview" into its own dedicated section (`## Prerequisites`) so users can check requirements before reading mechanics.
-* **Rename "VKS 3.3 - 3.8":** Rename this subsection under Process Overview to something like **How It Works** or **Key Concepts** so the section describes functionality rather than just version numbers.
-
-#### 2. Technical Inconsistencies & Path Errors
-
-* **Directory Name Mismatch:** The directory tree lists `clusterclass/`, but Step 1 references `clusterclasses/custom-cluster-class-x.y.z.yaml`.
-* **SSH Variable Mismatch:** Step 3 instructs the user to record the **Control-Plane Node IP**, but the SSH command below it uses `vmware-system-user@<WORKER_NODE_IP>`. This should be updated to `<CONTROL_PLANE_NODE_IP>`.
-* **Code Block Formatting:** Specify language tags (`bash`, `yaml`) on code blocks for syntax highlighting on GitHub.
-
-#### 3. Typographical Polish
-
-* Fix missing spaces around inline code: `custom`ClusterClass`` $\rightarrow$ `custom` `ClusterClass`.
-* Fix typos throughout: `verion` $\rightarrow$ `version`, `namespce` $\rightarrow$ `namespace`, `exteral` $\rightarrow$ `external`, `your are doing` $\rightarrow$ `you are doing`, `you actual endpoint` $\rightarrow$ `your actual endpoint`.
-
----
-
-### Refactored README.md
-
-```markdown
 # External Service Account Issuer for VKS Clusters
 
 This project defines variables in a custom `ClusterClass` to allow setting an external service account issuer URL without invalidating pre-existing tokens. 
 
 By leveraging a variable-driven optional patch, new tokens are signed by the newly added external endpoint while retaining the default `kubeadm` issuer as an accepted fallback.
-
----
 
 ## Process Overview
 
