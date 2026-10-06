@@ -1,160 +1,213 @@
-# VKS Cluster Class and Cluster for Custom Service Account Provider
+Here are the key structural, flow, and formatting improvements for your README, followed by a fully refactored markdown template you can copy and use directly.
 
-These files can be used to add a custom OIDC endpoint for service account authorization and role assumption on VKS clusters
+---
 
-Disclaimer: Use at your own risk. This project is provided "as is" without any warranty of any kind, either expressed or implied. The author assumes no liability for any damages or data loss caused by the use of this configuration. This is not an official product and is not supported by any organization
+### Key Recommendations
 
+#### 1. Structure & Flow
 
-## Prerequistes
-- Supervisor 1.28 or later
-- VKS version 3.3.0 or later (Tanzu Kubernetes Grid Service) - note very specific to VKS version 3.3.0, some commands may fail in newer versions.
-- vSphere Namespace access with at least edit permissions
-- Jumpbox with jq and kubectl, kubectl-vsphere plugin installed
+* **Relocate the Disclaimer:** Move the disclaimer block to the bottom of the document (`## Disclaimer`). Placing heavy legal disclaimers immediately under the title disrupts the reader's momentum before they understand the project.
+* **Unify the Operational Steps:** `Install Azure ARC software` and `Patch Cluster` are currently top-level headers (`##`), which breaks the deployment workflow. Combine all operational steps into a single section (`## Deployment & Configuration`) using sequential steps (`Step 1` through `Step 5`).
+* **Fix Step Numbering:** The "Patch Cluster" section currently skips steps (jumping directly from `1.` to `6.`).
+* **Elevate Prerequisites:** Pull "Prerequisites" out of "Process Overview" into its own dedicated section (`## Prerequisites`) so users can check requirements before reading mechanics.
+* **Rename "VKS 3.3 - 3.8":** Rename this subsection under Process Overview to something like **How It Works** or **Key Concepts** so the section describes functionality rather than just version numbers.
 
-## Files
-- svc-account-issuer-custom-class-3.3.0.yaml   - This is the custom cluster class that exposes the service-account-issuer variable
-- test-svc-cluster-3.3.0.yaml - VKS cluster manifest with cluster secret that leverage the custom cluster class
-- patch-issuer.yaml - json patch file that will update the service-account-issuer value
+#### 2. Technical Inconsistencies & Path Errors
 
-## Proccedure 
-**Note:** All kubectl commands are run from the Supervisor context
+* **Directory Name Mismatch:** The directory tree lists `clusterclass/`, but Step 1 references `clusterclasses/custom-cluster-class-x.y.z.yaml`.
+* **SSH Variable Mismatch:** Step 3 instructs the user to record the **Control-Plane Node IP**, but the SSH command below it uses `vmware-system-user@<WORKER_NODE_IP>`. This should be updated to `<CONTROL_PLANE_NODE_IP>`.
+* **Code Block Formatting:** Specify language tags (`bash`, `yaml`) on code blocks for syntax highlighting on GitHub.
 
-1. Modify namepace in svc-account-issuer-custom-class-3.3.0.yaml cluster class manifest with the vSphee namespace where you intend to create your vks cluster
-2. Create the custom cluster class
-```
-kubectl apply -f svc-account-issuer-custom-class-3.3.0.yaml 
-```
-3. Modify test-svc-cluster-3.3.0.yaml with the correct values for the following:
+#### 3. Typographical Polish
 
-**Secret** section
-- name: Must be in form of <clustername>-sa (test-svc-cluster-330-sa in our example)
-- namespace: vSphere namespace where the VKS cluster will be created (test-ns in our example)
+* Fix missing spaces around inline code: `custom`ClusterClass`` $\rightarrow$ `custom` `ClusterClass`.
+* Fix typos throughout: `verion` $\rightarrow$ `version`, `namespce` $\rightarrow$ `namespace`, `exteral` $\rightarrow$ `external`, `your are doing` $\rightarrow$ `you are doing`, `you actual endpoint` $\rightarrow$ `your actual endpoint`.
 
-**Cluster** section
-- name: <clustername> (test-svc-cluster-330 in our example)
-- namespace: vSphere namespace where VKS cluster will be created (test-ns in our example)
-- class: names of the cluster class we are using (svc-account-issuer-custom-class-3.3.0 in our example)
-- vmClass: must match an available vmclass assigned to your vsphere namespace (best-effort-medium in our example).  Use command below to determine
-- storageClass: must match an avaiable storageclass for your vsphere namespace (vsan-default-storage-policy in our example).  Use command below to determine.
-- defaultStorageClass: set to same value as storageClass
+---
 
-vmClass spec.topology.variables[name="vmClass"].value
-```
-kubectl get vmclass -n test-ns
-```
+### Refactored README.md
 
-storageClass spec.topology.variables[name="storageClass"].value
-```
-kubectl describe ns test-ns
-```
+```markdown
+# External Service Account Issuer for VKS Clusters
 
-Example Output: storage class is vsan-default-storage-policy
-```
-  Name:                                                                     test-ns-storagequota
-  Resource                                                                  Used  Hard
-  --------                                                                  ---   ---
-  vsan-default-storage-policy.storageclass.storage.k8s.io/requests.storage
-```
-4. Create VKS Cluster
-```
-kubectl apply -f test-svc-cluster-3.3.0.yaml
-```
-5. Verify cluster correctly builds
-```
-kubectl get cluster,kcp,md,ma,vspheremachine -n test-ns
-```
-6. Check Default Service Account Issuer Value
-```
-kubectl get kcp -n test-ns
-```
-```
-kubectl get kcp test-svc-cluster-330-xxxxx -n test-ns -o json | jq -r '.spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs["service-account-issuer"]'
-```
-Output should display
-https://kubernetes.default.svc.cluster.local
+This project defines variables in a custom `ClusterClass` to allow setting an external service account issuer URL without invalidating pre-existing tokens. 
 
+By leveraging a variable-driven optional patch, new tokens are signed by the newly added external endpoint while retaining the default `kubeadm` issuer as an accepted fallback.
 
-## Patching
-One the OIDC endpoint has been created we can patch the cluster with the new value.  You have 2 methods to chose from but I'd recommed the Direct Patch method.  
-**Note:** Either patch method will trigger a rolling update of your control-plane node(s).
+---
 
-### Merge Patch
-A merge type patch is easiest because you don't need to determine the index of the variable you wish to patch.  However, a merge patch will be denied by the validating webhook unless you supply all values under the variables section of the manifest.  Here is an example of a merge patch based on our simple VKS cluster manifest.  Note: you would need to update the vmclass, storageClass and defaultStorageClass values to match your environment.
-```
-kubectl patch cluster test-svc-cluster-330 -n test-ns --type merge -p '
-{
-  "spec": {
-    "topology": {
-      "variables": [
-        {
-          "name": "serviceAccountIssuer",
-          "value": "https://login.microsoftonline.com/tenant123/v2.0"
-        },
-        {
-          "name": "vmClass",
-          "value": "best-effort-medium"
-        },
-        {
-          "name": "storageClass",
-          "value": "vsan-default-storage-policy"
-        },
-        {
-          "name": "vsphereOptions",
-          "value": {
-            "persistentVolumes": {
-              "defaultStorageClass": "vsan-default-storage-policy"
-            }
-          }
-        }
-      ]
-    }
-  }
-}'
-```
-### Direct Variable Patch (Recommended)
-If you have a more complex VKS manifest the merge patch can become quite complex with many variables to manage.  It also introduces the potential to break the cluster if variables are incorrect.  This direct patch 2-step method is safer.
+## Process Overview
 
-1. Determine Index Location
-```
-kubectl get cluster test-svc-cluster-330 -n test-ns -o jsonpath='{range .spec.topology.variables[*]}{.name}{"\n"}{end}' | grep -n "serviceAccountIssuer"
-```
-This will return something like the following:
-```
-1:serviceAccountIssuer
-```
-We need to correct the index number (x-1) becaue Grep starts at 1 and Kubernetes starts at 0.  So index 1 becomes 0
+### How It Works
+1. **Inline Variable Definition**: An optional `externalServiceAccountIssuerURL` variable is declared in the `ClusterClass`.
+2. **Conditional Patch Execution**: An `enabledIf` condition appends the `kubeadm` default `--service-account-issuer` via `kubeadm`'s native patch directory (`/run/kubeadm/patches`) only when the variable is provided, preventing duplicate default flags.
+3. **Non-Disruptive Cluster Update**: Existing tokens remain trusted, and modifications are confined to the `Cluster` spec level—the `ClusterClass` itself requires no ongoing edits.
 
-2. Create a Patch File (or update patch-issuer.yaml in this repository)
-```
-- op: replace
-  path: /spec/topology/variables/0/value                             # Update the index for correct value
-  value: "https://login.microsoftonline.com/tenant123/v2.0"          # update with OIDC endpoint (no terminal /)
+---
+
+## Prerequisites
+
+- **Supervisor**: Version 1.28 or later
+- **VKS**: Version 3.3.0 or later (supports VKS 3.3 – 3.8)
+- **Permissions**: vSphere Namespace access with at least `edit` permissions
+- **Jumpbox**: Configured with `jq`, `kubectl`, and the `kubectl-vsphere` plugin
+
+---
+
+## Repository Structure & Manifests
+
+```text
+.
+├── clusterclass/
+│   ├── custom-cluster-class-3.3.yaml
+│   ├── custom-cluster-class-3.4.yaml
+│   └── custom-cluster-class-3.7.yaml
+├── clusters/
+│   ├── cluster-v33.yaml
+│   ├── cluster-v34.yaml
+│   └── cluster-v37.yaml
+├── patches/
+│   ├── patch-issuer.yaml
+│   └── patch-issuer-3.7.yaml
+├── secret-rotation/
+│   ├── patch-node-label.yaml
+│   └── service-account-secret-rotation.yaml
+└── test-workloads/
+    └── dummy-pod.yaml
+
 ```
 
-3. Patch Cluster
-```
- k patch cluster test-svc-cluster-330 \
- -n test-ns \
- --type json \
- --patch-file patch-issuer.yaml
- ```
+---
 
- Note: This will trigger a rolling update of the control plane node(s) in the cluster
+## Deployment & Configuration Workflow
 
-## Verification
+### Step 1: Create Custom Cluster Class
 
-1. Get kcp object name
-```
-kubectl get kcp -n test-ns 
-```
-2. Veriy Service-Account-Issuer is Updated
-```
-kubectl get kcp test-svc-cluster-330-xxxxx -n test-ns -o json | jq -r '.spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs["service-account-issuer"]'
-```
-Output Should Show Value from Patch
+Custom Cluster Classes are created in the target vSphere Namespace where you plan to deploy your VKS cluster (e.g., `test-ns`).
 
-3. Check Well-Known ID for Cluster (from VKS cluster context)
-```
- kubectl get --raw /.well-known/openid-configuration |jq
+1. Set your `kubectl` context to the Supervisor Cluster.
+2. Select and edit the appropriate manifest in `clusterclass/` matching your Supervisor's VKS Service version (**Do not modify any additional settings**).
+3. Apply the `ClusterClass` manifest:
+```bash
+kubectl apply -f clusterclass/custom-cluster-class-x.y.z.yaml
+
 ```
 
+### Step 2: Deploy the VKS Cluster
+
+Deploy a VKS cluster referencing the custom `ClusterClass` created in Step 1.
+
+1. Ensure your `kubectl` context is set to the Supervisor Cluster.
+2. Edit the appropriate `clusters/cluster-vXY.yaml` file:
+* Change the cluster name (optional).
+* Ensure the `namespace` matches your target vSphere namespace.
+* Adjust control plane and node pool replica counts as needed.
+* *Do not modify `clusterclassRef` or other system components unless necessary.*
+
+3. Deploy the cluster **without** setting `externalServiceAccountIssuerURL`. The cluster will initialize using `kubeadm`'s default issuer ([Example Cluster](https://www.google.com/search?q=clusters/cluster-v33.yaml)):
+```bash
+kubectl apply -f clusters/cluster-vXY.yaml
+
+```
+
+### Step 3: Validate Initial Cluster Settings (Optional)
+
+1. Obtain the IP address of the Control-Plane Node from the Supervisor context:
+```bash
+kubectl get virtualmachines -n <VSPHERE_NAMESPACE> -o wide
+
+```
+
+2. Decrypt the SSH password for the cluster:
+```bash
+kubectl get secret <CLUSTER_NAME>-ssh-password -n <VSPHERE_NAMESPACE> -o jsonpath='{.data.ssh-passwordkey}' | base64 -d
+
+```
+
+3. SSH into the Control-Plane Node and switch to root:
+```bash
+ssh vmware-system-user@<CONTROL_PLANE_NODE_IP>
+sudo -i
+
+```
+
+4. Verify that only the default `kubeadm` issuer is active:
+```bash
+grep service-account /etc/kubernetes/manifests/kube-apiserver.yaml
+
+```
+
+*Expected output:*
+```yaml
+- --service-account-issuer=[https://kubernetes.default.svc.cluster.local](https://kubernetes.default.svc.cluster.local)
+- --service-account-key-file=/etc/kubernetes/pki/sa.pub
+- --service-account-signing-key-file=/etc/kubernetes/pki/sa.key
+
+```
+
+5. Authenticate to the workload cluster via `kubectl vsphere login` or `vcf context create`, switch contexts, and verify node health:
+```bash
+kubectl config use-context cluster-vXY
+kubectl get nodes
+
+```
+
+### Step 4: Install Azure Arc Software
+
+Follow Microsoft's official documentation to install the required Azure Arc components on your workload cluster before updating the issuer URL.
+
+### Step 5: Patch Cluster with External Issuer
+
+Once your external issuer URL is available, update the cluster definition.
+
+1. **Option A:** Apply an inline JSON patch:
+```bash
+kubectl patch cluster cluster-v33 -n <VSPHERE_NAMESPACE> --type=json \
+  -p '[{"op":"add","path":"/spec/topology/variables/-","value":{"name":"externalServiceAccountIssuerURL","value":"[https://login.microsoftonline.com/tenant123/v2.0](https://login.microsoftonline.com/tenant123/v2.0)"}}]'
+
+```
+
+
+**Option B:** Use a patch file ([Example patch-issuer.yaml](https://www.google.com/search?q=patches/patch-issuer.yaml)):
+```yaml
+- op: add
+  path: /spec/topology/variables/-
+  value:
+    name: externalServiceAccountIssuerURL
+    value: [https://login.microsoftonline.com/tenant123/v2.0](https://login.microsoftonline.com/tenant123/v2.0)
+
+```
+
+Apply the patch file:
+```bash
+kubectl patch cluster cluster-v33 -n <VSPHERE_NAMESPACE> --type=json --patch-file patch.yaml
+
+```
+
+2. Wait for the Control Plane node(s) to redeploy with the updated configuration.
+3. SSH into the new Control-Plane Node (note that the IP address may have changed) and confirm the settings:
+```bash
+grep service-account /etc/kubernetes/manifests/kube-apiserver.yaml
+
+```
+
+*Expected output:*
+```yaml
+- --service-account-issuer=[https://login.microsoftonline.com/tenant123/v2.0](https://login.microsoftonline.com/tenant123/v2.0)
+- --service-account-key-file=/etc/kubernetes/pki/sa.pub
+- --service-account-signing-key-file=/etc/kubernetes/pki/sa.key
+- --service-account-issuer=[https://kubernetes.default.svc.cluster.local](https://kubernetes.default.svc.cluster.local)
+
+```
+
+> **Note:** The new external issuer is listed first (used to sign new tokens), while the default `kubeadm` issuer remains second (accepted for existing tokens). The `ClusterClass` itself remains unmodified throughout this process.
+
+---
+
+## Disclaimer
+
+Use at your own risk. This project is provided "as is" without warranty of any kind, express or implied. The author assumes no liability for damages or data loss resulting from the use of this configuration. This is not an official product and is not supported by any organization.
+
+```
+
+```

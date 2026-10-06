@@ -1,0 +1,9 @@
+# This patch updates the externalServiceAccountIssuerURL defined in the custom cluster class 
+# Patch Command
+# kubectl patch cluster cluster-v34 -n test-ns --type=json --patch-file patch-issuer.yaml
+
+- op: add
+  path: /spec/topology/variables/-
+  value:
+    name: externalServiceAccountIssuerURL
+    value: https://login.microsoftonline.com/tenant123/v2.0

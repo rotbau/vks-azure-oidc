@@ -1,0 +1,11 @@
+# This patch causes a re-role of control plane and workload nodes in a VKS cluster.  Required to update the {clustername}-sa keypair on the nodes after rotating the secret.
+# Patch Command
+# sed "s/TIMESTAMP/$(date +%s)/" patch-node-label.yaml | kubectl patch cluster cluster-v33 -n test-ns --type=json --patch-file /dev/stdin
+
+- op: add
+  path: /spec/topology/variables/-
+  value:
+    name: node
+    value:
+      labels:
+        sa-token-rotation: "TIMESTAMP"

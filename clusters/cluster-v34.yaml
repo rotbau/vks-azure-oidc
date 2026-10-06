@@ -1,0 +1,42 @@
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: cluster-v34
+  namespace: test-ns
+spec:
+  clusterNetwork:
+    services:
+      cidrBlocks:
+        - 198.202.0.0/16
+    pods:
+      cidrBlocks:
+        - 193.1.0.0/16
+  topology:
+    classRef:
+      name: custom-cc-service-account-v34
+      namespace: test-ns
+    version: v1.33.6+vmware.1-fips
+    controlPlane:
+      replicas: 1
+      metadata:
+        annotations:
+          run.tanzu.vmware.com/resolve-os-image: os-name=photon
+    workers:
+      machineDeployments:
+        - class: node-pool
+          name: worker
+          replicas: 1
+          metadata:
+            annotations:
+              run.tanzu.vmware.com/resolve-os-image: os-name=photon
+    variables:
+      - name: vmClass
+        value: best-effort-small
+      - name: storageClass
+        value: wcpglobal-storage-profile
+      - name: vsphereOptions
+        value:
+          persistentVolumes:
+            defaultStorageClass: wcpglobal-storage-profile
+            availableStorageClasses:
+              - wcpglobal-storage-profile
