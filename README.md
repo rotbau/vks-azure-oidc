@@ -122,7 +122,7 @@ kubectl get nodes
 
 ### Step 4: Install Azure Arc Software
 
-Follow Microsoft's official documentation to install the required Azure Arc components on your workload cluster before updating the issuer URL.
+Follow [Microsoft Azure Official Documentation](https://azure.github.io/azure-workload-identity/docs/installation/self-managed-clusters.html) to install the required Azure AD Workload Identity components on your workload cluster before updating the issuer URL.
 
 ### Step 5: Patch Cluster with External Issuer
 
