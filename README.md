@@ -37,6 +37,7 @@ By leveraging a variable-driven optional patch, new tokens are signed by the new
 ├── patches/
 │   ├── patch-issuer.yaml
 ├── secret-rotation/
+│   ├── README.md
 │   ├── patch-node-label.yaml
 │   └── service-account-secret-rotation.yaml
 └── test-workloads/
@@ -71,7 +72,7 @@ Deploy a VKS cluster referencing the custom `ClusterClass` created in Step 1.
 * Adjust control plane and node pool replica counts as needed.
 * *Do not modify `clusterclassRef` or other system components unless necessary.*
 
-3. Deploy the cluster **without** setting `externalServiceAccountIssuerURL`. The cluster will initialize using `kubeadm`'s default issuer ([Example Cluster](https://www.google.com/search?q=clusters/cluster-v33.yaml)):
+3. Deploy the cluster **without** setting `externalServiceAccountIssuerURL`. The cluster will initialize using `kubeadm`'s default issuer [Example Cluster](clusters/cluster-v33.yaml)
 ```bash
 kubectl apply -f clusters/cluster-vXY.yaml
 
@@ -134,8 +135,7 @@ kubectl patch cluster cluster-v33 -n <VSPHERE_NAMESPACE> --type=json \
 
 ```
 
-
-**Option B:** Use a patch file ([Example patch-issuer.yaml](https://www.google.com/search?q=patches/patch-issuer.yaml)):
+**Option B:** Use a patch file [Example patch-issuer.yaml](patches/patch-issuer.yaml)
 ```yaml
 - op: add
   path: /spec/topology/variables/-
@@ -147,7 +147,7 @@ kubectl patch cluster cluster-v33 -n <VSPHERE_NAMESPACE> --type=json \
 
 Apply the patch file:
 ```bash
-kubectl patch cluster cluster-v33 -n <VSPHERE_NAMESPACE> --type=json --patch-file patch.yaml
+kubectl patch cluster <ClusterName> -n <VSPHERE_NAMESPACE> --type=json --patch-file patch.yaml
 
 ```
 
@@ -171,10 +171,12 @@ grep service-account /etc/kubernetes/manifests/kube-apiserver.yaml
 
 ---
 
+## Service Account Key Rotation
+
+Reference the [Service Account Key Rotation](service-account-key-rotation/README.md) section for details on how to rotate the secret containing the TLS key pairs that sign token requests.
+
+---
+
 ## Disclaimer
 
 Use at your own risk. This project is provided "as is" without warranty of any kind, express or implied. The author assumes no liability for damages or data loss resulting from the use of this configuration. This is not an official product and is not supported by any organization.
-
-```
-
-```
