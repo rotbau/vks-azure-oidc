@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: jump
+  labels:
+    k8s-app: jump
+spec:
+  selector:
+    matchLabels:
+      name: jump
+  template:
+    metadata:
+      labels:
+        name: jump
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master # Added for compatibility with older VKS versions
+        operator: Exists
+        effect: NoSchedule
+      containers:
+        - name: busybox
+          image: busybox
+          command:
+            - sleep
+            - "3600"
+          volumeMounts:
+              - mountPath: /etc/kubernetes/pki
+                name: etc-kubernetes-pki
+      volumes:
+        - name: etc-kubernetes-pki
+          hostPath:
+            path: /etc/kubernetes/pki

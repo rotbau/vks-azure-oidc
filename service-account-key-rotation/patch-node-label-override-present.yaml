@@ -1,0 +1,15 @@
+# This patch causes a re-role of control plane VKS cluster where the controlPlane overrides section does not exist.  So if this is the first you have rotated
+# the key pair - this is probably the patch-file you want to run unless you are already using overrides for your CP nodes.  Required to update the {clustername}-sa keypair on the nodes after rotating the secret.
+# Command to check if controlPlane override section exists
+# kubectl get cluster kubernetes-cluster-bys4 -n sandbox-jqrdk -o jsonpath='{.spec.topology.controlPlane.variables.overrides}' | grep -q . && echo "EXISTS" || echo "DOES NOT EXIST"
+# If override section EXISTS continue running this patch.  If it DOES NOT EXIST refer to the patch-node-label-override-not-present.yaml
+# Patch Command
+# sed "s/TIMESTAMP/$(date +%s)/" patch-node-label-override-present.yaml | kubectl patch cluster cluster-v33 -n test-ns --type=json --patch-file /dev/stdin
+
+- op: replace
+  path: /spec/topology/controlPlane/variables/overrides/0
+  value:
+    name: node
+    value:
+      labels:
+        sa-token-rotation: "TIMESTAMP"
