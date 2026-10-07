@@ -1,110 +1,157 @@
-# Service Account Key Rotation
-Many vendors recommend regular rotation of the key pair used to sign your Kubernetes service account tokens. VKS leverages the standard Azure process for self-managed clusters with a few slight adjustments to accommodate the VKS architecture.
+# Service Account Key Rotation for VKS Clusters
 
-## OFFICIAL AZURE Process to rotate Service Account Keys
-Before proceeding, familiarize yourself with the official guide:
-[Azure AD Workload Identity - Service Account Key Rotation for Self-Managed Clusters Documentation](https://azure.github.io/azure-workload-identity/docs/topics/self-managed-clusters/service-account-key-rotation.html#key-rotation)
+Many vendors recommend regular rotation of the key pair used to sign Kubernetes service account tokens. VKS leverages the standard Azure Workload Identity process for self-managed clusters with slight adjustments to accommodate the VKS architecture.
 
-Follow the process outlined in the official Azure documentation, substituting the specific VKS variations listed below.
+---
 
-## VKS Specific Changes
+## Prerequisites
 
-Make the following adjustments to the official steps during execution.
+Before executing this workflow, ensure you have:
+* `kubectl` installed and configured.
+* Access to both the **Workload Cluster** and **Supervisor Cluster** `kubeconfig` contexts.
+* Review the [Official Azure SA Key Rotation Documentation](https://azure.github.io/azure-workload-identity/docs/topics/self-managed-clusters/service-account-key-rotation.html#key-rotation).
 
-### Step 1 - Back Up Old Key Pair and Distribute New Key Pair
- When deploying the jump DaemonSet listed on the official website, you must ensure it targets the VKS control plane nodes correctly.
+---
 
-1. Adjust the jump daemonset `.spec.template.spec.nodeSelector` to add a node-selector to only target control-plane nodes.  
-2. Adjust the jump daemonset `.spec.template.spec.tolerations` to match VKS control-plane taints.
-```
+## Repository Files
+
+| File | Description |
+| :--- | :--- |
+| `jump-daemonset-vks.yaml` | Modified DaemonSet manifest with VKS control plane node selectors and tolerations. |
+| `service-account-secret-rotation.yaml` | Sample Supervisor secret manifest for replacing `tls.crt` and `tls.key`. |
+| `patch-node-label-override-not-present.yaml` | JSON Patch template to force a control plane topology re-role if override section doesn't exist. |
+| `patch-node-label-override-present.yaml` | JSON Patch template to force a control plane topology re-role if override section does exist. |
+
+---
+
+
+## Option 1 - Step-by-Step Rotation Process - Offcial Azure Process
+
+### Step 1: Distribute New Key Pair (Workload Cluster Context)
+
+When deploying the jump DaemonSet listed in the official Azure guide, you must target the VKS control plane nodes specifically by adjusting the jump-daemonset manifest.
+
+1. **Switch Context:** Ensure `kubectl` is pointed to your **Workload Cluster**.
+2. **Configure Node Selection & Tolerations:** Ensure the DaemonSet includes the VKS control plane node selectors and tolerations:
+
+```yaml
+spec:
+  template:
     spec:
       nodeSelector:
         node-role.kubernetes.io/control-plane: ""
       tolerations:
-      - key: node-role.kubernetes.io/control-plane
-        operator: Exists
-        effect: NoSchedule
-      - key: node-role.kubernetes.io/master # Added for compatibility with older VKS versions
-        operator: Exists
-        effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master # Compatibility for older VKS versions
+          operator: Exists
+          effect: NoSchedule
+
 ```
-ℹ️ Note: An example reference manifest named [jump-daemonset-vks.yam](jump-daemonset-vks.yaml) is provided in this repository.
 
-3. Deploy the jump-daemonset pod incorporating the VKS Specific adjustments to adsure the pod lands on the control-plane nodes
-4. Follow the remaining steps on the [Official Azure Key Rotation Documentation](https://azure.github.io/azure-workload-identity/docs/topics/self-managed-clusters/service-account-key-rotation.html#key-rotation)
+> [!NOTE]
+> You can apply the pre-configured [jump-daemonset-vks.yaml](jump-daemonset-vks.yaml) directly from this repository.
 
-### Step 2 - Post Key Rotation - Update the Cluster Secret created in the vSphere Namespace
-The initial Service Account (SA) secret is generated during cluster creation and follows the {clustername}-sa naming convention. VKS cluster operators watch this secret to allow SA key pair overrides.
+3. **Deploy the DaemonSet:** Apply the modified DaemonSet to distribute the key pairs across all control plane nodes.
+4. **Follow Official Azure Steps:** Complete the key generation and distribution steps outlined in the [Official Azure Documentation](https://azure.github.io/azure-workload-identity/docs/topics/self-managed-clusters/service-account-key-rotation.html#key-rotation).
 
-Because VKS relies on rolling upgrades for cluster Lifecycle Management (LCM), any future Control Plane node replacements will reference this exact {clustername}-sa secret to provision `sa.key` and `sa.pub`. It is critical to update this secret immediately after a key rotation.
+---
 
-ℹ️ Note: Updating this secret updates the secret in the vsphere namespace and will be used when new control-plane nodes are created; it will not trigger a rolling update of your active control-plane nodes or affect the running cluster.
+### Step 2: Update the Cluster Secret (Supervisor Context)
 
-1. Switch Context: Change your kubeconfig context to the Supervisor cluster.
-2. Verify the Secret Name: Confirm the exact name of your target secret (e.g., if your cluster is in the test-ns namespace):
-```
-kubectl get secret -n test-ns |grep sa
+The initial Service Account secret is created during cluster provisioning using the `{clustername}-sa` naming convention. VKS relies on this secret during lifecycle management (LCM) operations.
 
-# Output
-test-svc-cluster-330-sa
-```
-3. Set Environment Variables:
-```
-export SECRET_NAME="test-svc-cluster-330-sa"
+> [!IMPORTANT]
+> Updating this secret updates future node configurations in the vSphere namespace, but **it will not trigger a rolling update** of active control plane nodes on its own.
+
+1. **Switch Context:** Change your `kubeconfig` to the **Supervisor Cluster**.
+2. **Verify and Set Environment Variables:**
+
+```bash
 export NAMESPACE="test-ns"
-```
-4. Backup the Existing Secret: Always back up before patching production components.
-```
-kubectl get secret $SECRET_NAME -n $NAMESPACE -oyaml > $SECRET_NAME-backup.yaml
-```
-5. Patch the Existing Secret
+export SECRET_NAME=$(kubectl get secret -n $NAMESPACE -o name | grep sa | cut -d/ -f2)
 
-**Option 1 - Create and Apply Patch File**
+# Verify output
+echo "Target Secret: $SECRET_NAME in $NAMESPACE"
+
 ```
-cat <<EOF > patch-sa.yaml
+
+3. **Back Up Existing Secret:**
+
+```bash
+kubectl get secret $SECRET_NAME -n $NAMESPACE -o yaml > ${SECRET_NAME}-backup.yaml
+
+```
+
+4. **Patch the Secret:**
+
+**Option A — Automated Patch File:**
+
+```bash
+cat <<EOF> patch-sa.yaml
 stringData:
   tls.crt: |
 $(sed 's/^/    /' sa-new.pub)
   tls.key: |
 $(sed 's/^/    /' sa-new.key)
 EOF
+
+kubectl patch secret $SECRET_NAME -n $NAMESPACE --patch-file patch-sa.yaml
+
 ```
-- Verify Patch Formatting: Inspect the generated patch file to ensure proper indentation.
+
+**Option B — Direct Manifest Apply:**
+Edit [service-account-secret-rotation.yaml](service-account-secret-rotation.yaml) with your new `tls.crt` and `tls.key` values, then apply:
+
+```bash
+kubectl apply -f service-account-secret-rotation.yaml -n $NAMESPACE
+
 ```
-cat patch-sa.yaml
-```
-- Apply the Patch:
-```
-kubectl patch secret $SECRET_NAME \
-  -n $NAMESPACE \
-  --patch-file patch-sa.yaml
-```
-**Option 2 - Update Existing Secret using YAML**
-- Reference the example [service-account-secret-rotation.yaml](service-account-secret-rotation.yaml)
-- Update tls.crt and tls.key with the new values
-- Apply the service-account-secret-rotation.yaml file to the Supervisor context.
+
+---
+
+## Option 2 - Key Rotation Process using VKS Specific Option (Alternate to option 1)
+
+### Step 1 - Update service-account-secret-rotation with your new sa.pub and sa.key values
+
+1. Edit [service-account-secret-rotation.yaml](service-account-secret-rotation.yaml) with your new `tls.crt` and `tls.key` values
+2. Change kubectl context to your Supervisor Cluster
+3. Apply service-account-secret-rotation.yaml with updated tls.crt and tls.key values
 ```
 kubectl apply -f service-account-secret-rotation.yaml
 ```
 
+### Step 2: Trigger Control Plane Rolling Update (Supervisor Context)
 
+You need to force VKS to re-role the control plane nodes so they adopt the updated secret. You can patch the control plane nodes to apply a timestamp variable override under `spec.topology.controlPlane`.
 
+**Option A — JSON Merge Patch (Recommended):**
+Works regardless of whether `spec.topology.controlPlane.variables` already exists.
 
+```bash
+export CLUSTER_NAME="cluster-v33"
 
+kubectl patch cluster $CLUSTER_NAME -n $NAMESPACE --type=merge -p "
+spec:
+  topology:
+    controlPlane:
+      variables:
+        overrides:
+        - name: node
+          value:
+            labels:
+              sa-token-rotation: \"$(date +%s)\"
+"
 
-
-
-
-
-8. Force Control-plane nodes to get recreated.  Existing clusters need to get redeployed to insert new Keys onto the node.
-
-8. Verify the Secret Update: Ensure the cryptographic hash of the secret data matches your local new key.
 ```
-# Check local key hash
-openssl rsa -in sa-new.key -outform DER 2>/dev/null | md5sum
+
+**Option B — JSON Patch (If appending to an existing `overrides` list):**
+
+```bash
+sed "s/TIMESTAMP/$(date +%s)/" patch-node-label-override-present.yaml | kubectl patch cluster $CLUSTER_NAME -n $NAMESPACE --type=json --patch-file /dev/stdin
+
 ```
-```
-# Check Secret cluster-side hash (the outputs shoudl match)
-kubectl get secret $SECRET_NAME -n $NAMESPACE -o jsonpath='{.data.tls\.key}' | \
-base64 -d | openssl rsa -outform DER 2>/dev/null | md5sum
-```
+
+> [!NOTE]
+> Monitor the rolling upgrade in the Supervisor cluster until all control plane nodes report `Ready`.
